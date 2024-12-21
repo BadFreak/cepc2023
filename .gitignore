@@ -1,7 +1,9 @@
 BAKshift/*
 bin/*
+!bin/
 log
 obj/*
+!/obj
 run/temp/
 run/test/
 share/CosmicRay2020/
