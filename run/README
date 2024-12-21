@@ -1,0 +1,39 @@
+# Decode, Calibration and Diagnose Packages for CEPC ECAL Beam Test Data
+
+Yuzhi, CHE
+Jiaxuan, WANG
+
+## Manual for users in Shift
+##############################################################################
+Step 1: Decode
+- Enter the running directroy:	cd /mnt2/ScECAL/Diagnose/run
+
+- Open global_config: vim global_config
+
+- Specify the date_tag name in file `global_config`, #e.g. mu+, e+, pi+
+
+- Specify the file name in file `global_config`, #current file name e.g. ECAL_Run182_20221026_173912.dat
+
+- Run decode.sh:	sh decode.sh	
+
+Result 1:
+
+- Enter the result directroy:  e.g.	cd /mnt2/ScECAL/Result/decode/mu+/
+
+- Record number of event 
+##############################################################################
+Step 2: Calibrate
+
+- Enter the running directroy:  cd /mnt2/ScECAL/Diagnose/run (Same Folder)
+
+- Run calib.sh:		sh calib.sh
+
+
+Result 2:
+
+- Enter the result directroy:  e.g.	cd /mnt2/ScECAL/Result/calib/mu+/
+
+- Record energy deposition and hit layer profile
+
+##############################################################################
+

@@ -1,0 +1,24 @@
+########################
+Author	:	Jiaxuan 
+Date	:	2023/11/08
+########################
+
+@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@	pedestal	@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@
+v1	:	for SPS & PS data
+SPS :	for SPS only
+
+@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@	hl_ratio	@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@
+v1	:	Pedestal reserved
+v2	:	Pedestal deducted
+v3	:	NO plot ; Fit range changed
+
+@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@	mip_calib	@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@
+v1	:	all auto muon
+v2	:	all auto muon and additionally file on right top corner
+v3	：	temperature correction

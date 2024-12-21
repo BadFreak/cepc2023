@@ -1,0 +1,45 @@
+#!/bin/bash
+#work_dir="$PWD"
+work_dir="/home/wangjx/HEP/CEPC2023/SiWECAL_analysis_2023_update"
+# raw_dir="/mnt/d/BAK/CEPC2023/BeamData/ECAL_SPS"
+data_dir="/home/wangjx/HEP/CEPC2023/Result_SPS"  #change here
+bin_dir="${work_dir}/bin"
+factor_dir="${work_dir}/share"
+
+particle_tag=e-
+energy_tag=40GeV
+#file_name=electron_${energy_tag}_100000
+file_name=${energy_tag}_hl_electron
+############# notice : file_name no .xxx ###################
+#----- Do not change -----
+raw_path=${raw_dir}/${particle_tag}/${energy_tag}
+decode_path=${data_dir}/decode/${particle_tag}/${energy_tag}
+
+auto_decode_path=${data_dir}/decode/${particle_tag}/${energy_tag}
+hl_decode_path=${data_dir}/decode/${particle_tag}/${energy_tag}
+
+ped_fit=${data_dir}/ped/fit/${particle_tag}/${energy_tag}
+ped_hist=${data_dir}/ped/hist/${particle_tag}/${energy_tag}
+
+mip_fit=${data_dir}/mip/fit/${particle_tag}/${energy_tag}
+mip_hist=${data_dir}/mip/hist/${particle_tag}/${energy_tag}
+
+#event_display_path="${data_dir}/eventdisplay/${particle_tag}/${energy_tag}"
+
+pede_factor="${factor_dir}/pedestal2023_SPS.root"
+#pede_factor="${factor_dir}/all_hl_electron2023_ped.root"
+#inter_factor="${factor_dir}/all_hl_electron2023_hlratio_v3.root"
+inter_factor="${factor_dir}/all_hl_electron_v4.root"
+#mip_factor="${factor_dir}/all_auto_muon_v4_trackfit.root"
+#mip_factor="${factor_dir}/20201216_20210308_MIPdeclineCor_Update.root"
+#mip_factor="${factor_dir}/all_auto_muon_v4_Cor.root"
+mip_name=all_auto_muon_v4_trackfit.root
+mip_factor=${factor_dir}/${mip_name}
+
+calib_path="${data_dir}/calib/${particle_tag}/${energy_tag}"
+
+hl_ratio_fit="${data_dir}/hl_ratio/fit/${particle_tag}/${energy_tag}"
+hl_ratio_hist="${data_dir}/hl_ratio/hist/${particle_tag}/${energy_tag}"
+
+log_dir="${data_dir}/log/${particle_tag}/${energy_tag}"
+
