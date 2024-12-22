@@ -1,10 +1,11 @@
 BAKshift/*
 bin/*
-!bin/
+!bin/.gitkeep
 log
 obj/*
-!/obj
+!/obj/.gitkeep
 run/temp/
 run/test/
 share/CosmicRay2020/
 src/src_bak/
+plot/*.png

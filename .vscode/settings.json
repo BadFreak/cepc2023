@@ -68,6 +68,9 @@
     "system_error": "cpp",
     "initializer_list": "cpp",
     "span": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "new": "cpp",
+    "iostream": "cpp",
+    "ostream": "cpp"
   }
 }

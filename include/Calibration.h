@@ -16,7 +16,7 @@ using namespace std;
 class processCali
 {
 public:
-	static const int LAYERNO = 30;
+	static const int LAYERNO = 32;
     static const int CHIPNO = 6;
     static const int CHANNO = 36;
 	const double MIPEnergy = 0.305; // MeV

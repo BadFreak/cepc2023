@@ -15,8 +15,7 @@
 #include "EBUdecode.h"
 #include "Extract.h"
 
-void processCali::Reset()
-{	
+void processCali::Reset() {	
 	if(_cellID_new.size()) 	_cellID_new.clear();
 	if(_hitADC.size())		_hitADC.clear();
 	if(_hitE.size())		_hitE.clear();
@@ -26,30 +25,18 @@ void processCali::Reset()
     if(_temp.size())		_temp.clear();
 }
 
-int processCali::TreeType(string inFileName)
-{
+int processCali::TreeType(string inTreeName) { // Return tree type Raw_Hit:0, Digi_Raw_Hit:1
 	int treeType = -1;
-	inFile = TFile::Open(TString(inFileName),"READ");
-    TIter next(inFile->GetListOfKeys());
-	TKey *key;
-	while ((key = (TKey*)next())) {
-		if (strcmp(key->GetClassName(), "TTree") == 0) { 
-			inTree = (TTree*)inFile->Get(key->GetName()); 
-			cout << "Tree name: " << inTree->GetName() << endl;
-			if (strcmp(inTree->GetName(), "Raw_Hit") == 0)  {
-				treeType = 0; // data 
-			} 
-			if (strcmp(inTree->GetName(), "Digi_Raw_Hit") == 0)  {
-				treeType = 1; // simu_digi
-			}
-		}
+	if (strcmp(inTreeName.c_str(), "Raw_Hit") == 0) {
+		treeType = 0; // data 
+	} 
+	if (strcmp(inTreeName.c_str(), "Digi_Raw_Hit") == 0) {
+		treeType = 1; // simu_digi
 	}
-	inFile->Close();
 	return treeType;
 }
 
-void processCali::SetAllBranchAddress(int treeType)
-{
+void processCali::SetAllBranchAddress(int treeType) {
 	inTree->SetBranchAddress("Run_Num",&_run_num);
 	inTree->SetBranchAddress("Event_Time",&_event_time);
 	inTree->SetBranchAddress("TriggerID",&_triggerID);
@@ -63,8 +50,7 @@ void processCali::SetAllBranchAddress(int treeType)
 	if(treeType==0) inTree->SetBranchAddress("Temperature",&_tempLayer);
 };
 
-void processCali::SetAllBranch()
-{
+void processCali::SetAllBranch() {
 	outTree->Branch("Run_Num",&_run_num_new);
 	outTree->Branch("Event_Time",&_event_time_new);
 	outTree->Branch("Event_Num",&_event_num);
@@ -75,7 +61,7 @@ void processCali::SetAllBranch()
 	outTree->Branch("Hit_X",&_hitX);
 	outTree->Branch("Hit_Y",&_hitY);
 	outTree->Branch("Hit_Z",&_hitZ);
-	outTree->Branch("NewTemperature",&_temp);
+	outTree->Branch("SiPM_Temp",&_temp);
 }
 
 double processCali::MIPCorrection(double MPV) {
@@ -112,23 +98,25 @@ bool processCali::HitCut(double xv, double yv, double slope, double intercept) {
 	}
 }
 
-int processCali::Calibration(string inFileName, string outFileName, Extract & ex)
-{
+int processCali::Calibration(string inFileName, string outFileName, Extract & ex) {
+	// Input settings
  	gStyle->SetOptFit(1111);
-	int treeType = -1;
-	treeType = TreeType(inFileName);	
-    inFile = TFile::Open(TString(inFileName),"READ");
-	if (treeType == 0) {
-		inTree = (TTree*)inFile->Get("Raw_Hit");
-	} else if (treeType == 1) {
-		inTree = (TTree*)inFile->Get("Digi_Raw_Hit");
-		//inTree = (TTree*)inFile->Get("MC_Truth");
-	} else {
-		return 1;
+	inFile = TFile::Open(TString(inFileName),"READ");
+    TIter next(inFile->GetListOfKeys());
+	TKey *key;
+	string inTreeName;
+	while ((key = (TKey*)next())) {
+		if (strcmp(key->GetClassName(), "TTree") == 0) { 
+			inTree = (TTree*)inFile->Get(key->GetName());
+			inTreeName = key->GetName();
+		}
 	}
+	cout << "Tree name: " << inTree->GetName() << endl;
+	int treeType = TreeType(inTreeName);	
+	if (treeType != 0 && treeType != 1) {return 1;}
 	if (!inTree) {cout << "!!!!! NO INPUT TREE !!!!!" << endl;}
 	SetAllBranchAddress(treeType);
-
+	// Output settings
     outFile = new TFile(TString(outFileName),"RECREATE");
 	if (treeType == 0) {
     	outTree = new TTree("Calib_Hit","after calibration");
@@ -139,146 +127,110 @@ int processCali::Calibration(string inFileName, string outFileName, Extract & ex
 	}
 	SetAllBranch();
 	// ==============================================================================
+	TH1D *EDep      = new TH1D("EDep","EDep(MeV)",1000,0,5000); // Event energy
+	TH1I *hCellHit  = new TH1I("hCellHit","hCellHit",750,0,1500); // Cell hit number
+	TH1D *EDepCut   = new TH1D("EDepCut","EDepCut(MeV)",1000,0,5000); // Event energy cut
+	TH1I *hLayerHit = new TH1I("hLayerHit","hLayerHit",LAYERNO,0,LAYERNO); // Layer hit number
+	
+	TH2I *HitNoMap  = new TH2I("HitNoMap",  "HitNoMap",LAYERNO,0,LAYERNO,100,0,100); // Layer hitNo map
+	TH2D *HitEMap   = new TH2D("HitEMap","HitEMap",LAYERNO,0,LAYERNO,500,0,500); // Layer Energy map
+	TProfile *hHitPro = new TProfile("hHitPro","Profile Layer HitNo",LAYERNO,0,LAYERNO); // profile of HitNoMap
+	TProfile *hEPro   = new TProfile("hEPro", "Profile Layer Energy",LAYERNO,0,LAYERNO); // profile of HitEMap
+	TH2D *CellHit2EDep = new TH2D("CellHit2EDep","CellHit2EDep",750,0,3000,1000,0,1000); // Event CellHit vs EDep
+	
+	TH1I * habHit = new TH1I("abHit","abHit@ event level",100, 0, 100); // Event: hit drift number
+	TH1I * habHitC = new TH1I("abHitC","abHitC@ event level",100, 0, 100); // Event: hit drift and in the center
+	// ==============================================================================
     //                          Calibration signal 
     // ==============================================================================
-	TH1D *Edep = new TH1D("Edep","Edep(MeV)",1000,0,5000);
-	TH1D *EdepCut = new TH1D("EdepCut","EdepCut(MeV)",1000,0,5000);
-	TH1I *HitLayerNo = new TH1I("HitLayerNo","HitLayerNo",LAYERNO,0,LAYERNO);
-	TH1I *HitNo = new TH1I("HitNo","HitNo",750,0,1500);
-	TH2I *HitMap = new TH2I("HitMap","HitMap",LAYERNO,0,LAYERNO,100,0,100);
-	TProfile *hitpro = new TProfile("hitpro","Profile Layer HitNo",30,0,30);
-	TProfile *hpro = new TProfile("hpro","Profile Layer Energy",30,0,30);
-	//TH2D *LayerEdep = new TH2D("LayerEdep","Layer Energy",30,0,30,100,0,400);
-	TH2D *LayerEdep = new TH2D("LayerEdep","Layer Energy",30,0,30,500,0,500);
-	TH2D *HitNo2EnergyDep = new TH2D("HitNo2EnergyDep","HitNo2EnergyDep",750,0,3000,1000,0,1000);
-
-	TH1I * habHit = new TH1I("abHit","abHit@ event level",100, 0, 100);
-	TH1I * habHitC = new TH1I("abHitC","abHitC@ event level",100, 0, 100);
 	int Entries = inTree->GetEntries();
-    cout<<" [ Prepare to processCali : ]oTotal Entries : "<<Entries<<" "<<endl;
-	for(int entry=0; entry < Entries; entry++) {
-	//for(int entry=0; entry < 10000; entry++) {
+    cout<<" [ Prepare to processCali : ] Total Entries : "<<Entries<<" "<<endl;
+	for (int entry=0; entry < Entries; entry++) {
+	//for (int entry=0; entry < 10000; entry++) {
         inTree->GetEntry(entry);
         if (entry%10000==0)  
 			cout<<" [ Process : Calibration : ]  event : "<<entry<<" "<<endl;
 		int driftHitNu = 0;
-		int positionHitNu = 0;
+		int centralChannelNu = 0;
 		double EnergyDep = 0;
 		double EnergyLayerLevel[LAYERNO] = {0};
 		int hitChannelNuEventLevel = 0;
 		int hitChannelNuLayerLevel[LAYERNO]={0};//hit channel Number: on each layer
 		int hitFlagLayerLevel[LAYERNO]={0};//whether this layer has hit
 		int hitLayerNuEventLevel = 0;
-		/////////////////////////////////
-		//for	(size_t i_hit = 0; i_hit < _cellID->size(); i_hit++) {
-		//	int layerID = _cellID->at(i_hit) / 1e5;
-		//	double posX = _hitX->at(i_hit);
-		//	double posY = _hitY->at(i_hit);
-		//	double hitE = _hitE->at(i_hit);
-		//	averX[layerID]  += posX * hitE;
-		//	averY[layerID]  += posY * hitE;
-		//	layerE[layerID] += hitE;
-		//}
-		//////////////////////////////////
 
+		// Reset branch and start to fill
 		Reset();
-		_run_num_new 	= _run_num;
-		_event_time_new = _event_time;
-		_event_num 		= _triggerID;
-		_detectorID 	= 0;
 		
 		for (size_t ihit = 0; ihit != _hitTag->size(); ++ihit) {
-            if(_hitTag->at(ihit)==0) continue;
-			//if(IsDeadChannel(_cellID->at(ihit))) continue;
-
-			int _layerID = _cellID->at(ihit)/1e5;
-            int _chipID	 = ( _cellID->at(ihit)%100000) / 1e4;
-            int _chnID   = _cellID->at(ihit)%100;
-			if(_layerID>29) continue;// last two layers are double_side readout
-            if(_chipID==5 && _chnID>29) continue;// only 210 channels per layer
-            
+            if (_hitTag->at(ihit)==0) continue;
+			int layerid = _cellID->at(ihit)/1e5;
+            int chipid	 = ( _cellID->at(ihit)%100000) / 1e4;
+            int chanid   = _cellID->at(ihit)%100;	
+			if (layerid>29) continue;// last two layers are double_side readout
+            if (chipid==5 && chanid>29) {cout << "Wrong cellID decoding ..." << endl ;continue;}// only 210 channels per layer
 			double caliCharge = _lg_charge->at(ihit);
             double caliTime   = _hg_charge->at(ihit);
+			
 			// reconstruction temperature distribution at each SiPM location
-			double *_position = EBUdecode(_layerID,_chipID,_chnID);
+			double *_position = EBUdecode(layerid,chipid,chanid);
 			double SiPMtemp;
-			if (treeType == 0) {	
-				if(_tempLayer->at(_layerID).size()!=0) {
-					SiPMtemp = tempReconstruction(_layerID, _position, _tempLayer->at(_layerID));
-				} else {
-					SiPMtemp = 23;// SiPMtemp=20
-				}
+			if (treeType == 0 && (_tempLayer->at(layerid).size()!=0)) {
+				SiPMtemp = tempReconstruction(layerid, _position, _tempLayer->at(layerid));
 			} else {
 				SiPMtemp = 23;
 			}
 			// jiaxuan : temperature depedence correction
 			// caliCharge = (1+(SiPMtemp-23)*0.03)*caliCharge;
             // caliTime = (1+(SiPMtemp-23)*0.03)*caliTime;
-			
-			// cout << "pedlow:	" << ex.pedMeanLow[_layerID][_chipID][_chnID]<< endl; 
-			// cout << "pedhigh:	" << ex.pedMeanHigh[_layerID][_chipID][_chnID]<< endl; 
-			// cout << "hlratio:	" << ex.HLRatio[_layerID][_chipID][_chnID]<< endl; 
-			// cout << "MIPvalue:	" << ex.MIPPeakValue[_layerID][_chipID][_chnID]<< endl; 
-			// cout << "ADCSwitch:	" << ex.HighADCSwitch[_layerID][_chipID][_chnID]<< endl; 
-            caliCharge -= ex.pedMeanLow[_layerID][_chipID][_chnID];
-            caliTime   -= ex.pedMeanHigh[_layerID][_chipID][_chnID];
+            caliCharge -= ex.pedMeanLow[layerid][chipid][chanid];
+            caliTime   -= ex.pedMeanHigh[layerid][chipid][chanid];
             
 			// jiaxuan :
 			/*if (caliTime > 0 && caliTime <2000) {
-				if (HitCut(caliTime, caliCharge, ex.HLRatio[_layerID][_chipID][_chnID] ,ex.HLIntercept[_layerID][_chipID][_chnID])) {
+				if (HitCut(caliTime, caliCharge, ex.HLRatio[layerid][chipid][chanid] ,ex.HLIntercept[layerid][chipid][chanid])) {
 			//if(0){
 					++driftHitNu;
 					if ((fabs(*_position) < 67 && fabs(*_position+1) < 67)) {
-						++positionHitNu;
+						++centralChannelNu;
 					}
 				}
 			}*/
 			//if(caliTime<10 && _hit_time->at(ihit) < 0) continue; // exclude bug of SP2E of High Low Gain mode file
 
-            // jiaxuan : high-low conversion with intercept
-            caliCharge *= ex.HLRatio[_layerID][_chipID][_chnID];
-            //caliCharge += ex.HLIntercept[_layerID][_chipID][_chnID];
+            // jiaxuan : high-low conversion without intercept
+            caliCharge *= ex.HLRatio[layerid][chipid][chanid];
+            //caliCharge += ex.HLIntercept[layerid][chipid][chanid];
 
 			// MIP response calibration for Gain Mode
-			int SiPMType = ((_layerID < 4) || (_layerID >27)) ? 1 : 0;
-			if (ex.MIPPeakValue[_layerID][_chipID][_chnID] <= 5) {
-				ex.MIPPeakValue[_layerID][_chipID][_chnID] = (SiPMType == 0) ? 90 : 400;
-			}
-			// exclude crosstalk
+			int SiPMType = ((layerid < 4) || (layerid >27)) ? 1 : 0;
+			// Exclude crosstalk: Not ever used here, change by using different MIP calibrated file
 			// double MIPCT;
 			// if (SiPMType == 0 ) {
-			// 	MIPCT = ex.MIPPeakValue[_layerID][_chipID][_chnID] / 1.1;
-			// 	//MIPCT = (ex.MIPPeakValue[_layerID][_chipID][_chnID] + 12.38) / 1.135;
-			// 	//MIPCT = MIPCorrection(ex.MIPPeakValue[_layerID][_chipID][_chnID]);
+			// 	MIPCT = ex.MIPPeakValue[layerid][chipid][chanid] / 1.1;
+			// 	//MIPCT = (ex.MIPPeakValue[layerid][chipid][chanid] + 12.38) / 1.135;
+			// 	//MIPCT = MIPCorrection(ex.MIPPeakValue[layerid][chipid][chanid]);
 			// } else {
-			// 	MIPCT = (ex.MIPPeakValue[_layerID][_chipID][_chnID]) / 1.15;
-			// 	//MIPCT = (ex.MIPPeakValue[_layerID][_chipID][_chnID] + 16.58) / 1.162;
+			// 	MIPCT = (ex.MIPPeakValue[layerid][chipid][chanid]) / 1.15;
+			// 	//MIPCT = (ex.MIPPeakValue[layerid][chipid][chanid] + 16.58) / 1.162;
 			// }
-            
-			//caliCharge /= ex.MIPPeakValue[_layerID][_chipID][_chnID];
-            //caliTime   /= ex.MIPPeakValue[_layerID][_chipID][_chnID];
-			
+
 			// to clarify HL-gain mode or auto-gain mode
 			double hitadc = 0;
 			double hitenergy = 0;
-			if ( treeType==0 ) {
-				if (_hit_time->at(ihit)< 0) {
-					// cout << "Processing HL-gain-mode file now ... ..." << endl;
-					hitadc = _hg_charge->at(ihit)< ex.HighADCSwitch[_layerID][_chipID][_chnID] ? caliTime: caliCharge;//MeV
-				} else {
-					// cout << "Processing auto-gain-mode file now ... ..." << endl;
+			if (treeType == 0) {
+				if (_hit_time->at(ihit)< 0) {// cout << "Processing HL-gain-mode file now ... ..." << endl;
+					hitadc = _hg_charge->at(ihit)< ex.HighADCSwitch[layerid][chipid][chanid] ? caliTime: caliCharge; //ADC
+				} else {// cout << "Processing auto-gain-mode file now ... ..." << endl;
 					hitadc = _lg_charge->at(ihit)==-1 ? caliTime: caliCharge;
 				}
 			}	
 			if (treeType == 1) {
 				hitadc = _lg_charge->at(ihit)==-1 ? caliTime: caliCharge;
 			}
-			hitenergy = hitadc / ex.MIPPeakValue[_layerID][_chipID][_chnID] * MIPEnergy;
+			if (ex.MIPPeakValue[layerid][chipid][chanid] <= 50) continue;
+			hitenergy = hitadc / ex.MIPPeakValue[layerid][chipid][chanid] * MIPEnergy;
 			
-			// jiaxuan mip cut
-			double setThreshold = 0.8;
-			//double threshold = setThreshold + gRandom->Gaus(setThreshold,0.05);
-			if (hitenergy < setThreshold * 0.305) continue; 
 			_hitADC.push_back(hitadc);
 			_hitE.push_back(hitenergy);	
 			_cellID_new.push_back(_cellID->at(ihit));
@@ -286,42 +238,42 @@ int processCali::Calibration(string inFileName, string outFileName, Extract & ex
 			_hitY.push_back(*(_position+1));
 			_hitZ.push_back(*(_position+2));
             _temp.push_back(SiPMtemp);
-			//if(entry==0)cout << fixed << setprecision(2) << hitenergy << " " << *_position << " " <<  *(_position+1) <<  " " << *(_position+2)<< endl; // jiaxuan
-
-			EnergyDep += hitenergy ;
-			EnergyLayerLevel[_layerID] += hitenergy;
+			
+			EnergyDep += hitenergy ; // Event energy
+			EnergyLayerLevel[layerid] += hitenergy; // Event Layer Energy
 			
 			hitChannelNuEventLevel++;
-			hitChannelNuLayerLevel[_layerID]++;
-			hitFlagLayerLevel[_layerID] = 1;
+			hitChannelNuLayerLevel[layerid]++;
+			hitFlagLayerLevel[layerid] = 1;
 		}
+		_run_num_new 	= _run_num;
+		_event_time_new = _event_time;
+		_event_num 		= _triggerID;
+		_detectorID 	= 0;// 0 for Sci-ECAL
+		outTree->Fill();
 		
 		habHit->Fill(driftHitNu);	
-		habHitC->Fill(positionHitNu);	
-		
+		habHitC->Fill(centralChannelNu);	
 		for (int i_layer = 0; i_layer < LAYERNO; i_layer++) {	
-			HitMap->Fill(i_layer,hitChannelNuLayerLevel[i_layer]);
+			HitNoMap->Fill(i_layer,hitChannelNuLayerLevel[i_layer]);
+			HitEMap->Fill(i_layer,EnergyLayerLevel[i_layer]);
 			hitLayerNuEventLevel += hitFlagLayerLevel[i_layer];
-			LayerEdep->Fill(i_layer,EnergyLayerLevel[i_layer]);
 		}
-		
-		HitNo->Fill(hitChannelNuEventLevel);
-		HitLayerNo->Fill(hitLayerNuEventLevel);
-		outTree->Fill();
-		//if(entry==0) cout<<"EnergyDep " << EnergyDep <<endl;// jiaxuan
-		Edep->Fill(EnergyDep);
-		if (driftHitNu < 2 && positionHitNu < 2) EdepCut->Fill(EnergyDep);
-		HitNo2EnergyDep->Fill(EnergyDep,hitChannelNuEventLevel);
+		hCellHit->Fill(hitChannelNuEventLevel);
+		hLayerHit->Fill(hitLayerNuEventLevel);
+		EDep->Fill(EnergyDep);
+		if (driftHitNu < 2 && centralChannelNu < 2) EDepCut->Fill(EnergyDep);
+		CellHit2EDep->Fill(EnergyDep,hitChannelNuEventLevel);
     }
 	
 	//CrystallBall Fit
 	gStyle->SetOptFit(1111);
-	double constant = Edep->GetBinContent(Edep->GetMaximumBin());
-	double mean = Edep->GetMean();
-	double sigma = Edep->GetRMS();
+	double constant = EDep->GetBinContent(EDep->GetMaximumBin());
+	double mean = EDep->GetMean();
+	double sigma = EDep->GetRMS();
 	TF1 * fCry = new TF1("fCry","crystalball");
 	TF1 * fGaus = new TF1("fGaus","gaus(0)");
-	Edep->Fit(fGaus);
+	EDep->Fit(fGaus);
 	constant = fGaus->GetParameter(0);
 	mean = fGaus->GetParameter(1);
 	sigma = fGaus->GetParameter(2);
@@ -330,30 +282,30 @@ int processCali::Calibration(string inFileName, string outFileName, Extract & ex
 	fCry->SetParameters(constant,mean,30,1,10000);
 	fCry->SetParLimits(0,0.7*constant,1.3*constant);
 	fCry->SetParLimits(1,0.7*mean,1.3*mean);
-	Edep->Fit(fCry);
+	EDep->Fit(fCry);
     //cout<<"Total Entries : "<<Entries<<" , Layer>=22 : "<<Entries_1<<" , Strips<=64 : "<<Entries_2<<endl;
     
 	outFile->cd();
-	Edep->SetLineWidth(2);
-	Edep->Write();
-	EdepCut->SetLineWidth(2);
-	EdepCut->Write();
-	HitMap->Write();
-	HitNo->Write();
-	HitLayerNo->Write();
-	HitNo2EnergyDep->SetOption("colz");
-	HitNo2EnergyDep->GetXaxis()->SetTitle("Energy[MeV]");
-	HitNo2EnergyDep->GetYaxis()->SetTitle("HitNo");
-	HitNo2EnergyDep->Write();
-	LayerEdep->Write();
+	EDep->SetLineWidth(2);
+	EDep->Write();
+	EDepCut->SetLineWidth(2);
+	EDepCut->Write();
+	HitNoMap->Write();
+	hCellHit->Write();
+	hLayerHit->Write();
+	CellHit2EDep->SetOption("colz");
+	CellHit2EDep->GetXaxis()->SetTitle("Energy[MeV]");
+	CellHit2EDep->GetYaxis()->SetTitle("HitNo");
+	CellHit2EDep->Write();
+	HitEMap->Write();
 	
 	habHit->Write();
 	habHitC->Write();
 
-	hitpro = HitMap->ProfileX();
-	hitpro->Write();
-	hpro = LayerEdep->ProfileX();
-	hpro->Write();
+	hHitPro = HitNoMap->ProfileX();
+	hHitPro->Write();
+	hEPro = HitEMap->ProfileX();
+	hEPro->Write();
     
 	outTree->Write("",TObject::kOverwrite);
     outFile->Close();
