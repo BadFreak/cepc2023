@@ -117,6 +117,7 @@ void MIPCalibration::SetTree() {
 	mipTree->Branch("GausSigma", &_gausSigma);
 	mipTree->Branch("ChiSquare", &_ChiSqr);
 	mipTree->Branch("NDF", &_Ndf);
+	mipTree->Branch("IsGoodChan", &_isGoodChan);
 }
 
 void MIPCalibration::DataClear() {
@@ -136,6 +137,7 @@ void MIPCalibration::ForceSetBranchValue(int layer, int chip, int channel){
 	_gausSigma = -10;
 	_ChiSqr = -10;
 	_Ndf = -10;
+	_isGoodChan = false;
 }
 
 int MIPCalibration::TreeType(string inFileName)
@@ -663,17 +665,16 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 	//TCanvas *Chn_MIP_Abnormal;
 	int page_no = 0;
 	int deadChannelNo = 0;
-	//for (int i_layer = 0; i_layer < 1; ++i_layer) {
 	cout << "Total Effective Event : " << totalEffEvent << endl;
 	hEfficiency->SetOption("HIST");
 	int MPVAbNu = 0;
 	int SigmaAbNu = 0;
 	int LackNu = 0;
-	//for (int i_layer = 0; i_layer < layerNu; ++i_layer) {
-	for (int i_layer = 9; i_layer < 10; ++i_layer) {
+	for (int i_layer = 0; i_layer < layerNu; ++i_layer) {
+	//for (int i_layer = 9; i_layer < 10; ++i_layer) {
 		hitEfficiency[i_layer] = (layerHit[i_layer]+.0) / totalEffEvent;
 		hEfficiency->Fill(i_layer,hitEfficiency[i_layer]);
-		//cout << " [ LandauGaus Fitting : ] Layer : " << i_layer << "	Hit : " << layerHit[i_layer] <<" Efficiency : " << hitEfficiency[i_layer] << endl;
+		cout << " [ LandauGaus Fitting : ] Layer : " << i_layer << "	Hit : " << layerHit[i_layer] <<" Efficiency : " << hitEfficiency[i_layer] << endl;
 		// jiaxuan : note for test
 		for (int i_chip = 0; i_chip < chipNu; ++i_chip) {
 		//for (int i_chip = 2; i_chip < 3; ++i_chip) {
@@ -695,8 +696,8 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 				if (chn_entries<10 && i_layer < layerNu) { 
 					cout << i_layer*100000+i_chip*10000+i_channel <<", " ;
 				}
-				// Smooth h_MIP
-				h_MIP[i_layer][i_chip][i_channel]->Smooth(3,"k5b");
+				// jiaxaun : Smooth h_MIP
+				//h_MIP[i_layer][i_chip][i_channel]->Smooth(3,"k5b");
 				
 				hCountChn->Fill(chipID_mip,i_channel,chn_entries);
 				Chn_MIP[page_no]->cd(i_channel%9+1);
@@ -790,6 +791,7 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 					_gausSigma = fun->GetParameter(3);
 					_ChiSqr = fun->GetChisquare();
 					_Ndf = fun->GetNDF();
+					_isGoodChan = true;
 				}
 					
 				gPad->Update();

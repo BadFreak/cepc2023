@@ -30,6 +30,7 @@ class MIPCalibration
 
 		double _landauMPV, _landauWidth, _gausSigma, _ChiSqr;
 		int _Ndf, _cellID_mip, _chn_entries;
+		bool _isGoodChan;
 		TFile * inFile;
 		TTree * inTree;
 		TFile * mipFile;

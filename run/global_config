@@ -6,10 +6,10 @@ data_dir="/home/wangjx/HEP/CEPC2023/Result_SPS"  #change here
 bin_dir="${work_dir}/bin"
 factor_dir="${work_dir}/share"
 
-particle_tag=e-
-energy_tag=40GeV
-#file_name=electron_${energy_tag}_100000
-file_name=${energy_tag}_hl_electron
+particle_tag=mu-
+energy_tag=100GeV
+file_name=all_auto_muon_v4 #file_name=electron_${energy_tag}_100000
+#file_name=${energy_tag}_hl_electron
 ############# notice : file_name no .xxx ###################
 #----- Do not change -----
 raw_path=${raw_dir}/${particle_tag}/${energy_tag}
@@ -33,7 +33,7 @@ inter_factor="${factor_dir}/all_hl_electron_v4.root"
 #mip_factor="${factor_dir}/all_auto_muon_v4_trackfit.root"
 #mip_factor="${factor_dir}/20201216_20210308_MIPdeclineCor_Update.root"
 #mip_factor="${factor_dir}/all_auto_muon_v4_Cor.root"
-mip_name=all_auto_muon_v4_trackfit.root
+mip_name=all_auto_muon_v4_Prime_update.root
 mip_factor=${factor_dir}/${mip_name}
 
 calib_path="${data_dir}/calib/${particle_tag}/${energy_tag}"

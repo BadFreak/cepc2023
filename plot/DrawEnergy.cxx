@@ -1,3 +1,7 @@
+#include <string>
+#include <vector>
+#include <map>
+
 int TreeType(string inTreeName) { // Return inTree type Raw_Hit:0, Digi_Raw_Hit:1
 	int treeType = -1;
 	if (strcmp(inTreeName.c_str(), "Calib_Hit") == 0) {
@@ -7,6 +11,22 @@ int TreeType(string inTreeName) { // Return inTree type Raw_Hit:0, Digi_Raw_Hit:
 		treeType = 1; // simu_digi
 	}
 	return treeType;
+}
+
+void ReadGoodChan(string inFileName, map<int,bool> &myMap) {
+    TFile * mipFile = TFile::Open(TString(inFileName),"READ");
+    if (!mipFile) cout << "=========== No MIP File ============" << endl;
+    TTree * mipTree = (TTree*)mipFile->Get("MIP_Fit");
+    if (!mipTree) cout << "=========== No MIP Tree ========" << endl;
+    int _cellID;
+    bool _isGoodChan;
+    mipTree->SetBranchAddress("CellID", &_cellID);
+    mipTree->SetBranchAddress("IsGoodChan", &_isGoodChan);
+    for (int i = 0; i < mipTree->GetEntries(); i++) {
+        mipTree->GetEntry(i);
+        myMap[_cellID] = _isGoodChan;
+    }
+    mipFile->Close();
 }
 
 bool IsOverThreshold(double energy) {
@@ -57,14 +77,20 @@ void DrawEnergy() {
     inTree->SetBranchAddress("Hit_Z", &Hit_Z);
     inTree->SetBranchAddress("SiPM_Temp", &SiPM_Temp);
     
-    TH1D *EDep = new TH1D("EDep","Energy Deposition",500,1000,2200);
+    map<int,bool> isGoodChan;
+    string inMIPFileName = "/home/wangjx/HEP/CEPC2023/SiWECAL_analysis_2023_update/share/all_auto_muon_v4_Prime_update.root";
+    ReadGoodChan(inMIPFileName, isGoodChan);
+   
+    TH1D *EDep = new TH1D("EDep","Energy Deposition",500,400,2200);
     cout << "==================" << endl;
     for (int i=0; i<inTree->GetEntries(); i++) {
         inTree->GetEntry(i);
         double sumEnergy = 0;
         for (size_t j=0; j < Hit_Energy->size(); ++j) {
+            int cellID = CellID->at(j);
             double hitEnergy = Hit_Energy->at(j);
             double SiPMTemp = SiPM_Temp->at(j);
+            //if (!isGoodChan[cellID]) continue;
             if (!IsOverThreshold(hitEnergy)) continue;
             //hitEnergy = TemperatureCorrection(hitEnergy, SiPM_Temp->at(j));
             sumEnergy += hitEnergy;
@@ -96,6 +122,7 @@ void DrawEnergy() {
     
     TCanvas * cEDep = new TCanvas("cEDep","Energy Deposition",800,600);
     cEDep->SetMargin(0.11,0.11,0.11,0.11);
+    cEDep->SetGrid();
     cEDep->cd();
     EDep->SetLineWidth(2);
     EDep->GetXaxis()->SetTitle("Energy [MeV]");
