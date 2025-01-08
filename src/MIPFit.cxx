@@ -24,6 +24,7 @@
 #include "EBUdecode.h"
 #include <TKey.h>
 #include <TMath.h>
+#include <TLine.h>
 
 // first layer (layer 0)
 //		---------------------------------------------------------
@@ -162,7 +163,7 @@ int MIPCalibration::TreeType(string inFileName)
 	return treeType;
 }
 
-void MIPCalibration::MuonTrackFit(int entry) { //entry just for checking
+/*void MIPCalibration::MuonTrackFit(int entry) { //entry just for checking
 	gErrorIgnoreLevel = kFatal;
 	gStyle->SetOptFit(1111);
 	const double zerr = 1; // mm
@@ -435,7 +436,7 @@ void MIPCalibration::MuonTrackFit(int entry) { //entry just for checking
 	interceptYZ = lineYZ->GetParameter(0);
 	slopeYZ = lineYZ->GetParameter(1);
 	//cout << "===== YZ FIT FINISH ! ======" << endl;
-/*
+
 	
 	TCanvas *cXZ = new TCanvas(Form("cXZ_odd_%d",entry), Form("cXZ_odd_%d",entry) ,800,600);
 	cXZ->cd();
@@ -463,14 +464,256 @@ void MIPCalibration::MuonTrackFit(int entry) { //entry just for checking
 	
 	delete cXZ;
 	delete cYZ;
-*/
+
 	delete lineYZ;
 	delete lineXZ;
 	delete posYZ;
 	delete posXZ;
+}*/
+
+// 1) 根据和 (averX, averY) 的距离来删除 (第一次)
+void MIPCalibration::removeByAverage(std::vector<Hit>& hits, double threshold, double averX, double averY)
+{
+    hits.erase(std::remove_if(hits.begin(), hits.end(), 
+                              [&](const Hit& h){
+                                  if (h.layer % 2 == 1) {
+                                      return (std::fabs(h.x - averX) > threshold);
+                                  } else {
+                                      return (std::fabs(h.y - averY) > threshold);
+                                  }
+                              }),
+               hits.end());
 }
 
-//int MIPCalibration::MIPFit(string input_name,string pedfactor_name, string hist_name, string mip_name) 
+// 2) 根据和线性拟合的残差来删除 (第二、第三次)
+void MIPCalibration::removeByFitResidual(
+    std::vector<Hit>& hits, double threshold,
+    double interceptXZ, double slopeXZ,
+    double interceptYZ, double slopeYZ )
+{
+    hits.erase(std::remove_if(hits.begin(), hits.end(), 
+                              [&](const Hit& h){
+                                  if (h.layer % 2 == 1) {
+                                      // XZ平面: 拟合函数 f(z) = interceptXZ + slopeXZ * z
+                                      double fitVal = interceptXZ + slopeXZ * h.z;
+                                      return (std::fabs(fitVal - h.x) > threshold);
+                                  } else {
+                                      // YZ平面
+                                      double fitVal = interceptYZ + slopeYZ * h.z;
+                                      return (std::fabs(fitVal - h.y) > threshold);
+                                  }
+                              }),
+               hits.end());
+}
+
+FitResult MIPCalibration::fitXZandYZ(const std::vector<Hit>& hits)
+{
+	gErrorIgnoreLevel = kFatal;
+	gStyle->SetOptFit(1111);
+    static const double zerr = 1;   // mm
+    static const double xerr = 2.5; // mm
+    static const double yerr = 2.5; // mm
+
+    // 新建 TGraphErrors
+    auto posXZ = std::make_unique<TGraphErrors>();
+    auto posYZ = std::make_unique<TGraphErrors>();
+
+    // 往里塞点
+    int iXZ = 0, iYZ = 0;
+    for (auto &h : hits) {
+        if (h.layer % 2 == 1) {
+            posXZ->SetPoint(iXZ, h.z, h.x);
+            posXZ->SetPointError(iXZ, zerr, xerr);
+            iXZ++;
+        } else {
+            posYZ->SetPoint(iYZ, h.z, h.y);
+            posYZ->SetPointError(iYZ, zerr, yerr);
+            iYZ++;
+        }
+    }
+
+    // 准备 TF1
+    TF1 lineXZ("lineXZ", "pol1", 0, 300);
+    TF1 lineYZ("lineYZ", "pol1", 0, 300);
+
+    // 简单先给一些初值 / 范围(也可以更精细)
+    lineXZ.SetParameter(0, 0); // intercept
+    lineXZ.SetParameter(1, 0); // slope
+    lineXZ.SetParLimits(1, -0.5, 0.5); // example
+
+    lineYZ.SetParameter(0, 0);
+    lineYZ.SetParameter(1, 0);
+    lineYZ.SetParLimits(1, -0.5, 0.5);
+
+    // 拟合
+    posXZ->Fit(&lineXZ, "Q"); 
+    double interceptXZ = lineXZ.GetParameter(0);
+    double slopeXZ     = lineXZ.GetParameter(1);
+
+    posYZ->Fit(&lineYZ, "Q");
+    double interceptYZ = lineYZ.GetParameter(0);
+    double slopeYZ     = lineYZ.GetParameter(1);
+
+    FitResult result { interceptXZ, slopeXZ, interceptYZ, slopeYZ };
+    return result;
+}
+
+void MIPCalibration::DrawHits(const std::vector<Hit>& hits, int entry, int times) {
+    TCanvas* c = new TCanvas(Form("c_entry%d_times%d",entry,times), Form("c_entry%d_times%d",entry,times), 1800, 900);
+    c->Divide(2, 1);
+	TGraphErrors* posXZ = new TGraphErrors();
+	TGraphErrors* posYZ = new TGraphErrors();
+	int i_XZ = 0;
+	int i_YZ = 0;
+	double xerr = 2.5; // mm
+	double yerr = 2.5; // mm
+	double zerr = 1;   // mm
+	for (auto &h: hits) {
+		if (h.layer%2 == 1) { 
+			posXZ->SetPoint(i_XZ, h.z, h.x);
+			posXZ->SetPointError(i_XZ, zerr, xerr); 
+			i_XZ++;
+		} else {
+			posYZ->SetPoint(i_YZ, h.z, h.y);
+			posYZ->SetPointError(i_YZ, zerr, yerr);
+			i_YZ++;
+		}
+	}
+	TLine * lineV[6];
+	for (int i = 0; i < 6; i++) {
+        lineV[i] = new TLine(45 + i*50, -120, 45 + i*50, 120);
+        lineV[i]->SetLineColor(kBlack);
+        lineV[i]->SetLineStyle(2);
+    }
+    c->cd(1);
+	gPad->SetMargin(0.12,0.12,0.12,0.12);
+    posXZ->SetTitle("XZ-plane;Z (mm);X (mm)");
+    posXZ->SetMarkerStyle(20); // 圆点
+    posXZ->SetMarkerColor(kBlue);
+	posXZ->GetYaxis()->SetTitleOffset(1.2);
+	posXZ->GetYaxis()->SetTitleSize(0.045);
+	posXZ->GetXaxis()->SetTitleSize(0.045);
+	posXZ->GetXaxis()->SetLabelSize(0.045);
+	posXZ->GetYaxis()->SetLabelSize(0.045);
+    posXZ->Draw("AP"); // A = Axis, P = Point
+    // 根据需要可调范围
+    // posXZ->GetXaxis()->SetRangeUser(0, 300); 
+    posXZ->GetYaxis()->SetRangeUser(-120, 120);
+    for (int i = 0; i < 6; i++) {lineV[i]->Draw();}
+
+    // ===== 绘制 YZ 平面 =====
+    c->cd(2);
+	gPad->SetMargin(0.12,0.12,0.12,0.12);
+    posYZ->SetTitle("YZ-plane;Z (mm);Y (mm)");
+    posYZ->SetMarkerStyle(20);
+    posYZ->SetMarkerColor(kRed);
+	posYZ->GetYaxis()->SetTitleOffset(1.2);
+	posYZ->GetYaxis()->SetTitleSize(0.045);
+	posYZ->GetXaxis()->SetTitleSize(0.045);
+	posYZ->GetXaxis()->SetLabelSize(0.045);
+	posYZ->GetYaxis()->SetLabelSize(0.045);
+    posYZ->Draw("AP");
+
+    // 同理可调范围
+    // posYZ->GetXaxis()->SetRangeUser(0, 300);
+    posYZ->GetYaxis()->SetRangeUser(-120, 120);
+    for (int i = 0; i < 6; i++) {lineV[i]->Draw();}
+
+    // 刷新画布
+    c->Update();
+	c->SaveAs(Form("drawhits/c_entry%d_times%d.jpg",entry,times));
+}
+
+void MIPCalibration::MuonTrackFit(int entry) {
+	// 假设本函数获取到所有 hit，放进 hits 这个 vector 中
+	std::vector<Hit> hits;
+	hits.reserve(_ZPOS.size());
+	int allHitInOneEvent = _ZPOS.size();
+	for (size_t i = 0; i < _ZPOS.size(); i++) {
+		Hit h;
+		h.x       = _XPOS[i];
+		h.y       = _YPOS[i];
+		h.z       = _ZPOS[i];
+		h.hadc    = _HADC[i];
+		h.layer   = _Layer[i];
+		h.chip    = _Chip[i];
+		h.channel = _Channel[i];
+		hits.push_back(h);
+	}
+	
+
+	// 计算 averX / averY（分别统计奇数层、偶数层）
+	double sumX = 0.0, sumY = 0.0;
+	int    countX = 0,   countY = 0;
+	for (auto &h : hits) {
+		if (h.layer % 2 == 1) { // odd
+			sumX += h.x;
+			countX++;
+		} else {                // even
+			sumY += h.y;
+			countY++;
+		}
+	}
+	double averX = (countX > 0) ? sumX / countX : 0;
+	double averY = (countY > 0) ? sumY / countY : 0;
+	// 2) 第一次筛选: 与平均值差大于 firstThre 就删除
+    double firstThre = 40.0;
+    removeByAverage(hits, firstThre, averX, averY);
+    if (entry == 30) DrawHits(hits,entry,0);
+    // 第一次拟合
+    auto r1 = fitXZandYZ(hits);
+
+    // 3) 第二次筛选: 用 r1 的拟合结果，残差阈值 secondThre
+    double secondThre = 7.5;
+    removeByFitResidual(hits, secondThre,
+                        r1.interceptXZ, r1.slopeXZ,
+                        r1.interceptYZ, r1.slopeYZ);
+
+    // 第二次拟合
+    auto r2 = fitXZandYZ(hits);
+
+    // 4) 第三次筛选: 残差阈值 thirdThre
+    double thirdThre = 3.0;
+    removeByFitResidual(hits, thirdThre,
+                        r2.interceptXZ, r2.slopeXZ,
+                        r2.interceptYZ, r2.slopeYZ);
+
+    // 第三次拟合
+    //auto r3 = fitXZandYZ(hits);
+	if (entry == 10) DrawHits(hits,entry,3);
+
+    // 拟合完成后的最终参数
+    //double interceptXZ = r3.interceptXZ;
+    //double slopeXZ     = r3.slopeXZ;
+    //double interceptYZ = r3.interceptYZ;
+    //double slopeYZ     = r3.slopeYZ;
+
+    // 统计保留下来的点数
+    int validHitCount = hits.size();
+    validHit2All = double(validHitCount) / double(allHitInOneEvent);
+    allHit  += allHitInOneEvent;
+    validHit += validHitCount;
+	
+	DataClear();
+	for (auto &h : hits) {
+		_XPOS.push_back(h.x);
+		_YPOS.push_back(h.y);
+		_ZPOS.push_back(h.z);
+		_HADC.push_back(h.hadc);
+		_Layer.push_back(h.layer);
+		_Chip.push_back(h.chip);
+		_Channel.push_back(h.channel);
+	}
+    // 如果需要，可以在这里把“保留下来的 hits”再写回 _XPOS, _YPOS, ... 
+    // 或者把最终的 intercept/slope 放到某些成员变量里
+    
+    // Debug 输出
+    // std::cout << "Entry " << entry
+    //           << ": allHitInOneEvent=" << allHitInOneEvent 
+    //           << ", validHitCount=" << validHitCount 
+    //           << ", ratio=" << validHit2All << std::endl;
+}
+
 int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, string mip_name, bool isTrackFit) 
 {
 	//PedestalExtract(pedfactor_name.c_str());
@@ -541,7 +784,7 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 	}
 
 	for (int entry = 0; entry < totalEntries; ++entry) {
-	//for (int entry = 0; entry < 100; ++entry) {
+	//for (int entry = 0; entry < 10; ++entry) {
 		//cout << "======== Now Entry : " << entry << " =========" << endl;
 		//if(entry%3==2)  continue; // jiaxuan : sample
 		if (entry%100000==0) {	
@@ -671,7 +914,7 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 	int SigmaAbNu = 0;
 	int LackNu = 0;
 	for (int i_layer = 0; i_layer < layerNu; ++i_layer) {
-	//for (int i_layer = 9; i_layer < 10; ++i_layer) {
+	//for (int i_layer = 9; i_layer < 0; ++i_layer) {
 		hitEfficiency[i_layer] = (layerHit[i_layer]+.0) / totalEffEvent;
 		hEfficiency->Fill(i_layer,hitEfficiency[i_layer]);
 		cout << " [ LandauGaus Fitting : ] Layer : " << i_layer << "	Hit : " << layerHit[i_layer] <<" Efficiency : " << hitEfficiency[i_layer] << endl;

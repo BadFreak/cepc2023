@@ -12,6 +12,22 @@
 #include"Extract.h"
 
 using namespace std;
+struct Hit {
+	double x;
+	double y;
+	double z;
+	double hadc;
+	int    layer;
+	int    chip;
+	int    channel;
+};
+
+struct FitResult {
+	double interceptXZ;
+	double slopeXZ;
+	double interceptYZ;
+	double slopeYZ;
+};
 
 class MIPCalibration
 {
@@ -64,7 +80,12 @@ class MIPCalibration
     	
 		MIPCalibration(){};
 		int TreeType(string inFileName);
+		void removeByAverage(std::vector<Hit>& hits, double threshold, double averX, double averY);
+		void removeByFitResidual(std::vector<Hit>& hits, double threshold,double interceptXZ, double slopeXZ,double interceptYZ, double slopeYZ);
+		FitResult fitXZandYZ(const std::vector<Hit>& hits);
+		void DrawHits(const std::vector<Hit>& hits, int entry, int times);
 		void MuonTrackFit(int entry);
+
     	int MIPFit(string input_name,Extract ex,string hist_name,string mip_name, bool isTrackFit);
     	//int MIPFit(string input_name,string pedfactor_name,string hist_name,string mip_name);
 		void ReadTree(int treeType);
