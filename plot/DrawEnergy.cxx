@@ -45,7 +45,10 @@ double TemperatureCorrection(double energy, double temp) {
 }
 
 void DrawEnergy() {
-    string inFileName = "/home/wangjx/HEP/CEPC2023/Result_SPS/calib/e-/40GeV/40GeV_hl_electron.root";
+    //string inFileName = "/home/wangjx/HEP/CEPC2023/Result_SPS/calib/e-/40GeV/40GeV_hl_electron.root";
+    //string inMIPFileName = "/home/wangjx/HEP/CEPC2023/SiWECAL_analysis_2023_update/share/all_auto_muon_v4_Prime_update.root";
+    string inFileName = "/mnt2/USTC/jxwang/CEPC_ScECAL/CEPC2023/Result/calib/e-/40GeV/40GeV_hl_electron.root";
+    string inMIPFileName = "/mnt2/USTC/jxwang/CEPC_ScECAL/SiWECAL_analysis_2023_update/share/all_auto_muon_v4_Prime_update.root";
 	TFile * inFile = TFile::Open(TString(inFileName),"READ");
     TTree * inTree = NULL;
     TIter next(inFile->GetListOfKeys());
@@ -78,7 +81,6 @@ void DrawEnergy() {
     inTree->SetBranchAddress("SiPM_Temp", &SiPM_Temp);
     
     map<int,bool> isGoodChan;
-    string inMIPFileName = "/home/wangjx/HEP/CEPC2023/SiWECAL_analysis_2023_update/share/all_auto_muon_v4_Prime_update.root";
     ReadGoodChan(inMIPFileName, isGoodChan);
    
     TH1D *EDep = new TH1D("EDep","Energy Deposition",500,400,2200);

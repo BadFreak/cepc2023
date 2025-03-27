@@ -160,7 +160,8 @@ int raw2RootHL::CatchSPIROCBag(ifstream& f_in, vector<int>& buffer_v, int& cycle
 		
 		layerID = buffer;		
 		
-		if(layerID==0x1f)// event_time and event bag tail "fedd fedd "
+		//if(layerID==0x1f)// event_time and event bag tail "fedd fedd "
+		if(layerID==0x01)// event_time and event bag tail "fedd fedd "	
 		{
 			event_time = 0;
 			for(auto i_time : {0x1000000, 0x10000, 0x100, 0x1})

@@ -102,6 +102,8 @@ int processCali::Calibration(string inFileName, string outFileName, Extract & ex
 	// Input settings
  	gStyle->SetOptFit(1111);
 	inFile = TFile::Open(TString(inFileName),"READ");
+	cout << "File name: " << inFile->GetName() << endl;
+
     TIter next(inFile->GetListOfKeys());
 	TKey *key;
 	string inTreeName;

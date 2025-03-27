@@ -1,15 +1,15 @@
 #!/bin/bash
 #work_dir="$PWD"
-work_dir="/home/wangjx/HEP/CEPC2023/SiWECAL_analysis_2023_update"
-# raw_dir="/mnt/d/BAK/CEPC2023/BeamData/ECAL_SPS"
-data_dir="/home/wangjx/HEP/CEPC2023/Result_SPS"  #change here
+work_dir="/mnt2/USTC/jxwang/CEPC_ScECAL/SiWECAL_analysis_2023_update"
+raw_dir="/mnt2/USTC/cepc_ecaldata"
+data_dir="/mnt2/USTC/jxwang/CEPC_ScECAL/CEPC2023/Result"  #change here
 bin_dir="${work_dir}/bin"
 factor_dir="${work_dir}/share"
 
-particle_tag=mu-
-energy_tag=100GeV
-file_name=all_auto_muon_v4 #file_name=electron_${energy_tag}_100000
-#file_name=${energy_tag}_hl_electron
+particle_tag=onground_cr
+energy_tag=
+#file_name=all_auto_muon_v4 #file_name=electron_${energy_tag}_100000
+file_name=ECAL_Run7_20250327_172324 #file_name=${energy_tag}_hl_electron
 ############# notice : file_name no .xxx ###################
 #----- Do not change -----
 raw_path=${raw_dir}/${particle_tag}/${energy_tag}

@@ -1,4 +1,6 @@
 #include <iostream>
+#include <iomanip>
+
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -29,8 +31,9 @@ void Extract::PedestalExtract(string inPedFileName) {
 	fill_n(&pedMeanLow[0][0][0], 	LAYERNO*CHIPNO*CHANNO, 1);
 	fill_n(&pedSigmaLow[0][0][0], 	LAYERNO*CHIPNO*CHANNO, 1);
     TFile* pedFile = new TFile(TString(inPedFileName),"READ");
+    if(!pedFile)	{cout<<"!!! GET PED FILE FAILED !!!"<<endl;}
     TTree* pedTree = (TTree*)pedFile->Get("ChnLevel"); 
-    if(!pedTree)	{cout<<"!!! GET PED FILE FAILED !!!"<<endl;}
+    if(!pedTree)	{cout<<"!!! GET PED TREE FAILED !!!"<<endl;}
 	vector<int>* _pedCellID = nullptr;
 	vector<double>* _pedMeanHigh = nullptr;
 	vector<double>* _pedSigmaHigh = nullptr;

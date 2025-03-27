@@ -7,6 +7,7 @@
  * Last Edit : 2023/10/19
  *******************************************************/
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 #include <TROOT.h>
@@ -1023,6 +1024,7 @@ int MIPCalibration::MIPFit(string input_name, Extract ex, string hist_name, stri
 					//cout << i_layer << " " << i_chip << " " << i_channel << endl;
 					mipdeadtxt << fixed << setprecision(0) << i_layer*1e5 + i_chip*1e4 + i_channel << ", ";
 					ForceSetBranchValue(i_layer,i_chip,i_channel);
+					_landauMPV = fun->GetParameter(1);
 					sprintf(char_tmp, "Layer%d_Chip%d_Chn%d_Abandoned", i_layer, i_chip, i_channel);
 					h_MIP[i_layer][i_chip][i_channel]->SetTitle(char_tmp);
 					h_MIP[i_layer][i_chip][i_channel]->SetName(char_tmp);
