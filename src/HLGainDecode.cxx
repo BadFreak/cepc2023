@@ -275,7 +275,7 @@ int raw2RootHL::CatchSPIROCBag(ifstream& f_in, vector<int>& buffer_v, int& cycle
 		buffer_v.erase(buffer_v.end()-(1+16+1)); // erase "f001"
 		buffer_v.erase(buffer_v.end()-1);// erase "f002"
 	
-		//for(auto it=buffer_v.begin(); it!=buffer_v.end(); ++it)	{cout<<hex << *it <<" " ;}
+		// for(auto it=buffer_v.begin(); it!=buffer_v.end(); ++it)	{cout<<hex << *it <<" " ;}
 		//cout << endl;
 		//cout << "buffer_v.size " << dec << buffer_v.size() << endl;
 		
@@ -481,7 +481,9 @@ int raw2RootHL::HLGainDecode(string input_file, string output_file)
 		if(decode_begin_flag && IsSame(LayerTriggerID))
 		{
 			//cout << "==================== TriggerID SAME ===================" << endl; 
-			if(preID == triggerID) 
+
+			// jiaxuan : for 2025.03.27 cosmic ray
+			/*if(preID == triggerID) 
 			{
 				cout << "triggerID of last event and this event is same !" << endl;
 				//cout <<	"cycleID : " << hex << cycleID << endl; 
@@ -500,7 +502,7 @@ int raw2RootHL::HLGainDecode(string input_file, string output_file)
 				//	continue;// some disorder of trigger ID 
 				}
 			}
-			preID = triggerID;
+			preID = triggerID;*/
 			BranchClear();
 			bool event_test_flag = false ; 
 			for (int i_layer = 0; i_layer < layer_No; ++i_layer) 

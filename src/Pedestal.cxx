@@ -150,8 +150,8 @@ int treePedestal::Pedestal(string root_name,string pedestal_name,string fitdata_
             int channelID = _cellID->at(i_hit)%100;
             double  lg_charge = _lg_charge->at(i_hit);
             double  hg_charge  = _hg_charge->at(i_hit);
-            if(_hitTag->at(i_hit)!=0) continue;// only save hit=0 events
-            //if(_hitTag->at(i_hit)==0) continue;// only save hit=1 events
+            //if(_hitTag->at(i_hit)!=0) continue;// only save hit=0 events
+            if(_hitTag->at(i_hit)==0) continue;// only save hit=1 events
 			
 			//if(_cellID->at(i_hit)==600000)	cout << "Event time : " << event_time << endl;	
 			
